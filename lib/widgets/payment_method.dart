@@ -16,13 +16,16 @@ class PaymentMethodWidget extends WidgetContainer {
   final void Function(String)? onCustomPaymentMethodSelected;
   final void Function(String)? onCustomPaymentMethodUnselected;
 
-  PaymentMethodWidget(
-      {required PaymentWidget paymentWidget,
-      required String selector,
-      this.onCustomRequested,
-      this.onCustomPaymentMethodSelected,
-      this.onCustomPaymentMethodUnselected})
-      : super(key: paymentWidget.getGlobalKey<PaymentMethodWidgetState>(selector), paymentWidget: paymentWidget);
+  PaymentMethodWidget({
+    required PaymentWidget paymentWidget,
+    required String selector,
+    this.onCustomRequested,
+    this.onCustomPaymentMethodSelected,
+    this.onCustomPaymentMethodUnselected,
+  }) : super(
+         key: paymentWidget.getGlobalKey<PaymentMethodWidgetState>(selector),
+         paymentWidget: paymentWidget,
+       );
 
   @override
   WidgetContainerState createState() => PaymentMethodWidgetState();
@@ -32,8 +35,10 @@ class PaymentMethodWidgetState extends WidgetContainerState {
   Amount? amount;
   var requestPaymentInProgress = false;
 
-  Future<PaymentMethodWidgetControl> renderPaymentMethods(
-      {required Amount amount, RenderPaymentMethodsOptions? options}) async {
+  Future<PaymentMethodWidgetControl> renderPaymentMethods({
+    required Amount amount,
+    RenderPaymentMethodsOptions? options,
+  }) async {
     addJavascriptChannels(_methodWidgetJavascriptChannels);
     this.amount = amount;
 
@@ -60,96 +65,142 @@ class PaymentMethodWidgetState extends WidgetContainerState {
     payload['amount'] = amount;
     payload['successUrl'] = 'tosspayments://payment/flutter/success';
     payload['failUrl'] = 'tosspayments://payment/flutter/fail';
-    return evaluateJavascriptFuture("paymentWidget.requestPaymentForNativeSDK(${jsonEncode(payload)})", 'payment');
+    if (paymentInfo.mockPaymentResult != MockPaymentResult.none) {
+      payload['_skipAuth'] = paymentInfo.mockPaymentResult.name;
+    }
+    return evaluateJavascriptFuture(
+      "paymentWidget.requestPaymentForNativeSDK(${jsonEncode(payload)})",
+      'payment',
+    );
   }
 
   Future<void> _updateAmount({required num amount}) async {
-    await evaluateJavascriptWithResolve('paymentMethodWidget.updateAmount($amount)');
+    await evaluateJavascriptWithResolve(
+      'paymentMethodWidget.updateAmount($amount)',
+    );
   }
 
   Future<SelectedPaymentMethod> _getSelectedPaymentMethod() async {
     return SelectedPaymentMethod.fromJson(
-        await evaluateJavascriptWithResolve('paymentMethodWidget.getSelectedPaymentMethod()'));
+      await evaluateJavascriptWithResolve(
+        'paymentMethodWidget.getSelectedPaymentMethod()',
+      ),
+    );
   }
 
   Set<JavascriptChannel> get _methodWidgetJavascriptChannels => {
-        JavascriptChannel(
-            name: "requestPayments",
-            onReceived: (jsonObject) async {
-              var paymentHtml = jsonObject['html'];
+    JavascriptChannel(
+      name: "requestPayments",
+      onReceived: (jsonObject) async {
+        var paymentHtml = jsonObject['html'];
 
-              if (requestPaymentInProgress) return;
-              requestPaymentInProgress = true;
-              var result = await navigateToWebviewByPlatform(
-                  context,
-                  RequestPaymentPage(
-                      data: PaymentWidgetRequestData(paymentHtml: paymentHtml, orderId: orderId, domain: domain)));
-              if (result != null) {
-                if (result.runtimeType == Success) {
-                  eventManager.triggerEvent('payment', Result(success: result));
-                } else if (result.runtimeType == Fail) {
-                  eventManager.triggerEvent('payment', Result(fail: result));
-                }
-              } else {
-                // 하드웨어 백버튼 or 모달 드래그해서 닫은 경우
-                eventManager.triggerEvent(
-                    'payment', Result(fail: Fail("PAY_PROCESS_CANCELED", "사용자가 결제를 취소하였습니다", orderId)));
-              }
-              requestPaymentInProgress = false;
-            }),
-        JavascriptChannel(
-            name: "error",
-            onReceived: (jsonObject) {
-              String errorCode = jsonObject['errorCode'] ?? '';
-              String errorMessage = jsonObject['errorMessage'] ?? '';
-              String orderId = jsonObject['orderId'] ?? '';
-              eventManager.triggerError('widgetStatus', Fail(errorCode, errorMessage, orderId));
-              eventManager.triggerEvent('payment', Result(fail: Fail(errorCode, errorMessage, orderId)));
-            }),
-        JavascriptChannel(
-            name: "customRequest",
-            onReceived: (jsonObject) {
-              var paymentMethodKey = jsonObject['paymentMethodKey'];
-              (widget as PaymentMethodWidget).onCustomRequested?.call(paymentMethodKey);
-            }),
-        JavascriptChannel(
-            name: "customPaymentMethodSelect",
-            onReceived: (jsonObject) {
-              var paymentMethodKey = jsonObject['paymentMethodKey'];
-              (widget as PaymentMethodWidget).onCustomPaymentMethodSelected?.call(paymentMethodKey);
-            }),
-        JavascriptChannel(
-            name: "customPaymentMethodUnselect",
-            onReceived: (jsonObject) {
-              var paymentMethodKey = jsonObject['paymentMethodKey'];
-              (widget as PaymentMethodWidget).onCustomPaymentMethodUnselected?.call(paymentMethodKey);
-            }),
-        JavascriptChannel(
-            name: "changePaymentMethod",
-            onReceived: (jsonObject) {
-              // var params = json.decode(message.message)['params'];
-              // eventManager.triggerEvent('changePaymentMethod', event)
-              // selectedPaymentMethod = SelectedPaymentMethod.fromJson(params);
-            }),
-        JavascriptChannel(
-            name: "requestHTML",
-            onReceived: (jsonObject) async {
-              var brandPayHTML = jsonObject['html'];
+        if (requestPaymentInProgress) return;
+        requestPaymentInProgress = true;
+        var result = await navigateToWebviewByPlatform(
+          context,
+          RequestPaymentPage(
+            data: PaymentWidgetRequestData(
+              paymentHtml: paymentHtml,
+              orderId: orderId,
+              domain: domain,
+            ),
+          ),
+        );
+        if (result != null) {
+          if (result.runtimeType == Success) {
+            eventManager.triggerEvent('payment', Result(success: result));
+          } else if (result.runtimeType == Fail) {
+            eventManager.triggerEvent('payment', Result(fail: result));
+          }
+        } else {
+          // 하드웨어 백버튼 or 모달 드래그해서 닫은 경우
+          eventManager.triggerEvent(
+            'payment',
+            Result(
+              fail: Fail("PAY_PROCESS_CANCELED", "사용자가 결제를 취소하였습니다", orderId),
+            ),
+          );
+        }
+        requestPaymentInProgress = false;
+      },
+    ),
+    JavascriptChannel(
+      name: "error",
+      onReceived: (jsonObject) {
+        String errorCode = jsonObject['errorCode'] ?? '';
+        String errorMessage = jsonObject['errorMessage'] ?? '';
+        String orderId = jsonObject['orderId'] ?? '';
+        eventManager.triggerError(
+          'widgetStatus',
+          Fail(errorCode, errorMessage, orderId),
+        );
+        eventManager.triggerEvent(
+          'payment',
+          Result(fail: Fail(errorCode, errorMessage, orderId)),
+        );
+      },
+    ),
+    JavascriptChannel(
+      name: "customRequest",
+      onReceived: (jsonObject) {
+        var paymentMethodKey = jsonObject['paymentMethodKey'];
+        (widget as PaymentMethodWidget).onCustomRequested?.call(
+          paymentMethodKey,
+        );
+      },
+    ),
+    JavascriptChannel(
+      name: "customPaymentMethodSelect",
+      onReceived: (jsonObject) {
+        var paymentMethodKey = jsonObject['paymentMethodKey'];
+        (widget as PaymentMethodWidget).onCustomPaymentMethodSelected?.call(
+          paymentMethodKey,
+        );
+      },
+    ),
+    JavascriptChannel(
+      name: "customPaymentMethodUnselect",
+      onReceived: (jsonObject) {
+        var paymentMethodKey = jsonObject['paymentMethodKey'];
+        (widget as PaymentMethodWidget).onCustomPaymentMethodUnselected?.call(
+          paymentMethodKey,
+        );
+      },
+    ),
+    JavascriptChannel(
+      name: "changePaymentMethod",
+      onReceived: (jsonObject) {
+        // var params = json.decode(message.message)['params'];
+        // eventManager.triggerEvent('changePaymentMethod', event)
+        // selectedPaymentMethod = SelectedPaymentMethod.fromJson(params);
+      },
+    ),
+    JavascriptChannel(
+      name: "requestHTML",
+      onReceived: (jsonObject) async {
+        var brandPayHTML = jsonObject['html'];
 
-              if (requestPaymentInProgress) return;
-              requestPaymentInProgress = true;
-              var result = await navigateToWebviewByPlatform(
-                  context,
-                  RequestPaymentPage(
-                      data: PaymentWidgetRequestData(paymentHtml: brandPayHTML, orderId: orderId, domain: domain)));
-              if (result != null) {
-                if (result.runtimeType == String) {
-                  evaluateJavascript(result);
-                }
-              }
-              requestPaymentInProgress = false;
-            }),
-      };
+        if (requestPaymentInProgress) return;
+        requestPaymentInProgress = true;
+        var result = await navigateToWebviewByPlatform(
+          context,
+          RequestPaymentPage(
+            data: PaymentWidgetRequestData(
+              paymentHtml: brandPayHTML,
+              orderId: orderId,
+              domain: domain,
+            ),
+          ),
+        );
+        if (result != null) {
+          if (result.runtimeType == String) {
+            evaluateJavascript(result);
+          }
+        }
+        requestPaymentInProgress = false;
+      },
+    ),
+  };
 
   @override
   void initState() {

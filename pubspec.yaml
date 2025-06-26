@@ -1,12 +1,8 @@
 name: tosspayments_widget_sdk_flutter
-description: This SDK helps you easily link the 'toss payments' payment module on the flutter.
 version: 2.1.1
-homepage: https://tosspayments.com
-documentation: https://docs.tosspayments.com/guides/index
 
 environment:
-  sdk: '>=2.17.0 <4.0.0'
-  flutter: ">=3.7.0"
+  sdk: '>=3.8.0-0 <4.0.0'
 
 dependencies:
   flutter:

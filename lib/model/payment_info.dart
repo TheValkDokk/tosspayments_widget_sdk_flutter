@@ -1,5 +1,17 @@
 import 'package:tosspayments_widget_sdk_flutter/model/payment_widget_options.dart';
 
+enum MockPaymentResult {
+  none,
+  success,
+  fail;
+
+  String get name => switch (this) {
+    none => 'NONE',
+    success => 'FORCE_SUCCESS',
+    fail => 'FORCE_FAILURE',
+  };
+}
+
 class PaymentInfo {
   final String orderId;
   final String orderName;
@@ -19,6 +31,7 @@ class PaymentInfo {
   final PaymentMethodOptions? paymentMethodOptions;
   final bool? useInternationalCardOnly;
   final Map<String, String>? metadata;
+  final MockPaymentResult mockPaymentResult;
 
   const PaymentInfo({
     required this.orderId,
@@ -39,6 +52,7 @@ class PaymentInfo {
     this.paymentMethodOptions,
     this.useInternationalCardOnly,
     this.metadata,
+    this.mockPaymentResult = MockPaymentResult.none,
   });
 
   Map<String, dynamic> toJson() => _$PaymentInfoToJson(this);
@@ -81,10 +95,21 @@ class EscrowProduct {
   final num unitPrice;
   final num quantity;
 
-  const EscrowProduct(
-      {required this.id, required this.name, required this.code, required this.unitPrice, required this.quantity});
+  const EscrowProduct({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.unitPrice,
+    required this.quantity,
+  });
 
-  Map toJson() => {'id': id, 'name': name, 'code': code, 'unitPrice': unitPrice, 'quantity': quantity};
+  Map toJson() => {
+    'id': id,
+    'name': name,
+    'code': code,
+    'unitPrice': unitPrice,
+    'quantity': quantity,
+  };
 }
 
 class Product {
@@ -94,15 +119,21 @@ class Product {
   final String currency;
   final String description;
 
-  const Product(
-      {required this.name,
-      required this.quantity,
-      required this.unitamount,
-      required this.currency,
-      required this.description});
+  const Product({
+    required this.name,
+    required this.quantity,
+    required this.unitamount,
+    required this.currency,
+    required this.description,
+  });
 
-  Map toJson() =>
-      {'name': name, 'quantity': quantity, 'unitamount': unitamount, 'currency': currency, 'description': description};
+  Map toJson() => {
+    'name': name,
+    'quantity': quantity,
+    'unitamount': unitamount,
+    'currency': currency,
+    'description': description,
+  };
 }
 
 class Shipping {
@@ -122,7 +153,14 @@ class Address {
   final String area2;
   final String? postalCode;
 
-  const Address({required this.country, this.line1, this.line2, this.area1, required this.area2, this.postalCode});
+  const Address({
+    required this.country,
+    this.line1,
+    this.line2,
+    this.area1,
+    required this.area2,
+    this.postalCode,
+  });
 
   Map toJson() {
     final val = <String, dynamic>{};
