@@ -15,6 +15,7 @@ class TosspaymentsInAppWebview extends StatefulWidget {
   final Future<bool> Function(String) _handleOverrideUrl;
   final Set<JavascriptChannel>? _baseJavascriptChannel;
   final bool _gestureEnabled;
+  final VoidCallback? _onPageFinished;
 
   const TosspaymentsInAppWebview({
     Key? key,
@@ -23,17 +24,21 @@ class TosspaymentsInAppWebview extends StatefulWidget {
     this.domain,
     Set<JavascriptChannel>? baseJavascriptChannel,
     bool gestureEnabled = false,
-  })  : _baseJavascriptChannel = baseJavascriptChannel,
-        _handleOverrideUrl = handleOverrideUrl,
-        _initialHtmlString = initialHtml,
-        _gestureEnabled = gestureEnabled,
-        super(key: key);
+    VoidCallback? onPageFinished,
+  }) : _baseJavascriptChannel = baseJavascriptChannel,
+       _handleOverrideUrl = handleOverrideUrl,
+       _initialHtmlString = initialHtml,
+       _gestureEnabled = gestureEnabled,
+       _onPageFinished = onPageFinished,
+       super(key: key);
 
   @override
-  TosspaymentsInAppWebviewState createState() => TosspaymentsInAppWebviewState();
+  TosspaymentsInAppWebviewState createState() =>
+      TosspaymentsInAppWebviewState();
 }
 
-class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview> with AutomaticKeepAliveClientMixin {
+class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview>
+    with AutomaticKeepAliveClientMixin {
   InAppWebViewController? _webviewController;
   final Completer<void> _onPageFinishedCompleter = Completer<void>();
   final Map<String, JavascriptChannel> _javaScriptInterfaces = {};
@@ -57,40 +62,57 @@ class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview> with
       onScrollChanged: (controller, x, y) {
         gestureRecognizer.scrollY = y;
       },
-      gestureRecognizers: widget._gestureEnabled ? {Factory(() => gestureRecognizer)} : {},
+      gestureRecognizers: widget._gestureEnabled
+          ? {Factory(() => gestureRecognizer)}
+          : {},
       onWebViewCreated: (controller) {
         _webviewController = controller;
         _webviewController?.setSettings(
-            settings: InAppWebViewSettings(
-                allowsBackForwardNavigationGestures: false,
-                useShouldOverrideUrlLoading: true,
-                resourceCustomSchemes: ['intent', 'market']));
+          settings: InAppWebViewSettings(
+            allowsBackForwardNavigationGestures: false,
+            useShouldOverrideUrlLoading: true,
+            resourceCustomSchemes: ['intent', 'market'],
+          ),
+        );
         addJavascriptChannels(widget._baseJavascriptChannel ?? {});
         evaluateJavascript(bridgeScript);
         _webviewController?.addJavaScriptHandler(
-            handlerName: 'PaymentWidgetFlutterSDK',
-            callback: (args) {
-              final message = json.decode(args[0]);
-              final name = message['name'];
-              final params = message['params'];
+          handlerName: 'PaymentWidgetFlutterSDK',
+          callback: (args) {
+            final message = json.decode(args[0]);
+            final name = message['name'];
+            final params = message['params'];
 
-              _javaScriptInterfaces[name]?.onReceived(params);
-            });
+            _javaScriptInterfaces[name]?.onReceived(params);
+          },
+        );
 
         if (Platform.isIOS) {
           // safari에서 히스토리가 쌓이지 않아 뒤로가기가 먹통인 현상 해결
-          _webviewController?.loadUrl(urlRequest: URLRequest(url: WebUri.uri(Uri.parse('about:blank'))));
+          _webviewController?.loadUrl(
+            urlRequest: URLRequest(url: WebUri.uri(Uri.parse('about:blank'))),
+          );
         }
         if (widget.domain == null) {
           _webviewController?.loadUrl(
-              urlRequest: URLRequest(
-                  url: WebUri.uri(Uri.parse(Uri.dataFromString(widget._initialHtmlString,
-                          mimeType: 'text/html', encoding: Encoding.getByName('utf-8'))
-                      .toString()))));
+            urlRequest: URLRequest(
+              url: WebUri.uri(
+                Uri.parse(
+                  Uri.dataFromString(
+                    widget._initialHtmlString,
+                    mimeType: 'text/html',
+                    encoding: Encoding.getByName('utf-8'),
+                  ).toString(),
+                ),
+              ),
+            ),
+          );
         } else {
           _webviewController?.loadData(
             data: widget._initialHtmlString,
-            baseUrl: widget.domain == null ? null : WebUri.uri(Uri.parse('https://${widget.domain}/')),
+            baseUrl: widget.domain == null
+                ? null
+                : WebUri.uri(Uri.parse('https://${widget.domain}/')),
           );
         }
       },
@@ -98,6 +120,9 @@ class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview> with
         if (url.toString() == 'about:blank') {
           return;
         }
+        print('onLoadStop');
+        print("CCC: ${widget._onPageFinished != null}");
+        widget._onPageFinished?.call();
         if (!_onPageFinishedCompleter.isCompleted) {
           _onPageFinishedCompleter.complete();
         }
@@ -123,7 +148,9 @@ class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview> with
     if (_onPageFinishedCompleter.isCompleted) {
       _webviewController?.evaluateJavascript(source: script);
     } else {
-      await _onPageFinishedCompleter.future.then((_) => _webviewController?.evaluateJavascript(source: script) ?? '');
+      await _onPageFinishedCompleter.future.then(
+        (_) => _webviewController?.evaluateJavascript(source: script) ?? '',
+      );
     }
   }
 

@@ -9,21 +9,34 @@ import '../webview/javascript_channel.dart';
 
 class AgreementWidget extends WidgetContainer {
   final void Function(AgreementStatus)? onChange;
+  @override
+  final void Function()? onFinish;
 
-  AgreementWidget({required PaymentWidget paymentWidget, required String selector, this.onChange})
-      : super(key: paymentWidget.getGlobalKey<PaymentAgreementWidgetState>(selector), paymentWidget: paymentWidget);
+  AgreementWidget({
+    required PaymentWidget paymentWidget,
+    required String selector,
+    this.onChange,
+    this.onFinish,
+  }) : super(
+         key: paymentWidget.getGlobalKey<PaymentAgreementWidgetState>(selector),
+         paymentWidget: paymentWidget,
+         onFinish: onFinish,
+       );
 
   @override
   WidgetContainerState createState() => PaymentAgreementWidgetState();
 }
 
 class PaymentAgreementWidgetState extends WidgetContainerState {
-  Future<AgreementWidgetControl> renderAgreement({RenderAgreementOptions? options}) async {
+  Future<AgreementWidgetControl> renderAgreement({
+    RenderAgreementOptions? options,
+  }) async {
     addJavascriptChannels(agreementWidgetJavascriptChannels);
 
     final optionsJson = jsonEncode(options?.toJson() ?? '');
 
-    String renderScript = 'const agreementWidget = paymentWidget.renderAgreement(\'#agreement\', $optionsJson);';
+    String renderScript =
+        'const agreementWidget = paymentWidget.renderAgreement(\'#agreement\', $optionsJson);';
     try {
       await renderWidget(renderScript: renderScript);
       return AgreementWidgetControl._(getAgreementStatus: _getAgreementStatus);
@@ -33,17 +46,22 @@ class PaymentAgreementWidgetState extends WidgetContainerState {
   }
 
   Future<AgreementStatus> _getAgreementStatus() async {
-    return AgreementStatus.fromJson(await evaluateJavascriptWithResolve('agreementWidget.getAgreementStatus()'));
+    return AgreementStatus.fromJson(
+      await evaluateJavascriptWithResolve(
+        'agreementWidget.getAgreementStatus()',
+      ),
+    );
   }
 
   Set<JavascriptChannel> get agreementWidgetJavascriptChannels => {
-        JavascriptChannel(
-            name: "updateAgreementStatus",
-            onReceived: (jsonObject) {
-              var agreementStatus = AgreementStatus.fromJson(jsonObject);
-              (widget as AgreementWidget).onChange?.call(agreementStatus);
-            }),
-      };
+    JavascriptChannel(
+      name: "updateAgreementStatus",
+      onReceived: (jsonObject) {
+        var agreementStatus = AgreementStatus.fromJson(jsonObject);
+        (widget as AgreementWidget).onChange?.call(agreementStatus);
+      },
+    ),
+  };
 }
 
 /// [renderAgreement]로 얻을 수 있는 클래스입니다.
@@ -51,7 +69,5 @@ class PaymentAgreementWidgetState extends WidgetContainerState {
 class AgreementWidgetControl {
   final Future<AgreementStatus> Function() getAgreementStatus;
 
-  const AgreementWidgetControl._({
-    required this.getAgreementStatus,
-  });
+  const AgreementWidgetControl._({required this.getAgreementStatus});
 }

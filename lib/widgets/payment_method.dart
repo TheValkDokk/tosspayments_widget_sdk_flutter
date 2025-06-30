@@ -15,6 +15,8 @@ class PaymentMethodWidget extends WidgetContainer {
   final void Function(String)? onCustomRequested;
   final void Function(String)? onCustomPaymentMethodSelected;
   final void Function(String)? onCustomPaymentMethodUnselected;
+  @override
+  final void Function()? onFinish;
 
   PaymentMethodWidget({
     required PaymentWidget paymentWidget,
@@ -22,9 +24,11 @@ class PaymentMethodWidget extends WidgetContainer {
     this.onCustomRequested,
     this.onCustomPaymentMethodSelected,
     this.onCustomPaymentMethodUnselected,
+    this.onFinish,
   }) : super(
          key: paymentWidget.getGlobalKey<PaymentMethodWidgetState>(selector),
          paymentWidget: paymentWidget,
+         onFinish: onFinish,
        );
 
   @override
@@ -34,6 +38,10 @@ class PaymentMethodWidget extends WidgetContainer {
 class PaymentMethodWidgetState extends WidgetContainerState {
   Amount? amount;
   var requestPaymentInProgress = false;
+
+  void onFinish() {
+    (widget as PaymentMethodWidget).onFinish?.call();
+  }
 
   Future<PaymentMethodWidgetControl> renderPaymentMethods({
     required Amount amount,
@@ -99,6 +107,7 @@ class PaymentMethodWidgetState extends WidgetContainerState {
         var result = await navigateToWebviewByPlatform(
           context,
           RequestPaymentPage(
+            onFinish: onFinish,
             data: PaymentWidgetRequestData(
               paymentHtml: paymentHtml,
               orderId: orderId,
@@ -185,6 +194,7 @@ class PaymentMethodWidgetState extends WidgetContainerState {
         var result = await navigateToWebviewByPlatform(
           context,
           RequestPaymentPage(
+            onFinish: onFinish,
             data: PaymentWidgetRequestData(
               paymentHtml: brandPayHTML,
               orderId: orderId,

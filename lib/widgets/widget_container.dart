@@ -12,10 +12,14 @@ import '../webview/payment_window_in_app_webview.dart';
 
 abstract class WidgetContainer extends StatefulWidget {
   final PaymentWidget _paymentWidget;
+  final VoidCallback? onFinish;
 
-  const WidgetContainer({Key? key, required PaymentWidget paymentWidget})
-      : _paymentWidget = paymentWidget,
-        super(key: key);
+  const WidgetContainer({
+    Key? key,
+    required PaymentWidget paymentWidget,
+    required this.onFinish,
+  }) : _paymentWidget = paymentWidget,
+       super(key: key);
 
   @override
   WidgetContainerState createState() => WidgetContainerState();
@@ -29,7 +33,8 @@ class WidgetContainerState extends State<WidgetContainer> {
 
   final GlobalKey<TosspaymentsInAppWebviewState> _webViewKey = GlobalKey();
 
-  String? get redirectUrl => widget._paymentWidget.paymentWidgetOptions?.brandPayOption?.redirectUrl;
+  String? get redirectUrl =>
+      widget._paymentWidget.paymentWidgetOptions?.brandPayOption?.redirectUrl;
 
   String? get domain {
     try {
@@ -61,6 +66,7 @@ class WidgetContainerState extends State<WidgetContainer> {
     return SizedBox(
       height: _height ?? 1,
       child: TosspaymentsInAppWebview(
+        onPageFinished: widget.onFinish,
         key: _webViewKey,
         initialHtml: PhaseConfig.paymentWidgetHtml,
         handleOverrideUrl: _handleOverrideUrl,
@@ -69,9 +75,7 @@ class WidgetContainerState extends State<WidgetContainer> {
     );
   }
 
-  Future<dynamic> renderWidget({
-    required String renderScript,
-  }) async {
+  Future<dynamic> renderWidget({required String renderScript}) async {
     final osVersion = await getOSVersion();
     addJavascriptChannels(widgetJavascriptChannels);
     return evaluateJavascriptFuture('''
@@ -133,26 +137,29 @@ class WidgetContainerState extends State<WidgetContainer> {
 
   // 모든 위젯이 공통으로 받는 JavascriptChannel
   Set<JavascriptChannel> get widgetJavascriptChannels => {
-        JavascriptChannel(
-            name: "updateHeight",
-            onReceived: (jsonObject) {
-              num height = jsonObject['height'];
-              updateHeight(height.toDouble());
-            }),
-        JavascriptChannel(
-            name: "widgetStatus",
-            onReceived: (jsonObject) {
-              var status = jsonObject['status'];
-              if (status == 'load') {
-                eventManager.triggerEvent('widgetStatus', null);
-              }
-            }),
-        JavascriptChannel(
-            name: "resolve",
-            onReceived: (jsonObject) {
-              eventManager.triggerEvent('resolve', jsonObject);
-            }),
-      };
+    JavascriptChannel(
+      name: "updateHeight",
+      onReceived: (jsonObject) {
+        num height = jsonObject['height'];
+        updateHeight(height.toDouble());
+      },
+    ),
+    JavascriptChannel(
+      name: "widgetStatus",
+      onReceived: (jsonObject) {
+        var status = jsonObject['status'];
+        if (status == 'load') {
+          eventManager.triggerEvent('widgetStatus', null);
+        }
+      },
+    ),
+    JavascriptChannel(
+      name: "resolve",
+      onReceived: (jsonObject) {
+        eventManager.triggerEvent('resolve', jsonObject);
+      },
+    ),
+  };
 
   // Agreements와 Methods가 url을 handle하는 방법
   Future<bool> _handleOverrideUrl(String requestedUrl) async {
@@ -164,7 +171,8 @@ class WidgetContainerState extends State<WidgetContainer> {
     }
 
     final isHtml = requestedUrl.startsWith('data:text/html');
-    final isNetworkUrl = convertUrl.appScheme == 'http' || convertUrl.appScheme == 'https';
+    final isNetworkUrl =
+        convertUrl.appScheme == 'http' || convertUrl.appScheme == 'https';
     final isIntent = convertUrl.appScheme == 'intent';
 
     if (isHtml || isIntent) {
