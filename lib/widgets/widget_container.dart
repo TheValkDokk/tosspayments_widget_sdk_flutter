@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:tosspayments_widget_sdk_flutter/model/payment_method_provider_info.dart';
 import 'package:tosspayments_widget_sdk_flutter/payment_widget.dart';
 import 'package:tosspayments_widget_sdk_flutter/utils/event_waiter.dart';
 import 'package:tosspayments_widget_sdk_flutter/utils/phase.dart';
@@ -13,11 +14,13 @@ import '../webview/payment_window_in_app_webview.dart';
 abstract class WidgetContainer extends StatefulWidget {
   final PaymentWidget _paymentWidget;
   final VoidCallback? onFinish;
+  final void Function(PaymentTypeMethodInfo)? changePaymentMethod;
 
   const WidgetContainer({
     Key? key,
     required PaymentWidget paymentWidget,
     required this.onFinish,
+    required this.changePaymentMethod,
   }) : _paymentWidget = paymentWidget,
        super(key: key);
 
@@ -71,6 +74,7 @@ class WidgetContainerState extends State<WidgetContainer> {
         initialHtml: PhaseConfig.paymentWidgetHtml,
         handleOverrideUrl: _handleOverrideUrl,
         domain: domain,
+        changePaymentMethod: widget.changePaymentMethod,
       ),
     );
   }

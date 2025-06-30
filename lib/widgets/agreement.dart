@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:tosspayments_widget_sdk_flutter/model/payment_method_provider_info.dart';
 import 'package:tosspayments_widget_sdk_flutter/payment_widget.dart';
 import 'package:tosspayments_widget_sdk_flutter/widgets/widget_container.dart';
 
@@ -11,16 +12,20 @@ class AgreementWidget extends WidgetContainer {
   final void Function(AgreementStatus)? onChange;
   @override
   final void Function()? onFinish;
+  @override
+  final void Function(PaymentTypeMethodInfo)? changePaymentMethod;
 
   AgreementWidget({
     required PaymentWidget paymentWidget,
     required String selector,
     this.onChange,
     this.onFinish,
+    required this.changePaymentMethod,
   }) : super(
          key: paymentWidget.getGlobalKey<PaymentAgreementWidgetState>(selector),
          paymentWidget: paymentWidget,
          onFinish: onFinish,
+         changePaymentMethod: changePaymentMethod,
        );
 
   @override

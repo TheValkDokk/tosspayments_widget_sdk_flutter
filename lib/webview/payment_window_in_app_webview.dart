@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:tosspayments_widget_sdk_flutter/model/payment_method_provider_info.dart';
 
 import '../utils/nested_vertical_gesture_recognizer.dart';
 import 'javascript_channel.dart';
@@ -16,6 +17,7 @@ class TosspaymentsInAppWebview extends StatefulWidget {
   final Set<JavascriptChannel>? _baseJavascriptChannel;
   final bool _gestureEnabled;
   final VoidCallback? _onPageFinished;
+  final void Function(PaymentTypeMethodInfo)? changePaymentMethod;
 
   const TosspaymentsInAppWebview({
     Key? key,
@@ -25,6 +27,7 @@ class TosspaymentsInAppWebview extends StatefulWidget {
     Set<JavascriptChannel>? baseJavascriptChannel,
     bool gestureEnabled = false,
     VoidCallback? onPageFinished,
+    this.changePaymentMethod,
   }) : _baseJavascriptChannel = baseJavascriptChannel,
        _handleOverrideUrl = handleOverrideUrl,
        _initialHtmlString = initialHtml,
@@ -83,6 +86,12 @@ class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview>
             final name = message['name'];
             final params = message['params'];
 
+            if (name == 'changePaymentMethod') {
+              widget.changePaymentMethod?.call(
+                PaymentTypeMethodInfo.fromMap(params),
+              );
+            }
+
             _javaScriptInterfaces[name]?.onReceived(params);
           },
         );
@@ -120,8 +129,6 @@ class TosspaymentsInAppWebviewState extends State<TosspaymentsInAppWebview>
         if (url.toString() == 'about:blank') {
           return;
         }
-        print('onLoadStop');
-        print("CCC: ${widget._onPageFinished != null}");
         widget._onPageFinished?.call();
         if (!_onPageFinishedCompleter.isCompleted) {
           _onPageFinishedCompleter.complete();

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:tosspayments_widget_sdk_flutter/model/payment_info.dart';
+import 'package:tosspayments_widget_sdk_flutter/model/payment_method_provider_info.dart';
 import 'package:tosspayments_widget_sdk_flutter/payment_widget.dart';
 import 'package:tosspayments_widget_sdk_flutter/utils/navigate.dart';
 import 'package:tosspayments_widget_sdk_flutter/widgets/widget_container.dart';
@@ -17,6 +18,8 @@ class PaymentMethodWidget extends WidgetContainer {
   final void Function(String)? onCustomPaymentMethodUnselected;
   @override
   final void Function()? onFinish;
+  @override
+  final void Function(PaymentTypeMethodInfo)? changePaymentMethod;
 
   PaymentMethodWidget({
     required PaymentWidget paymentWidget,
@@ -25,10 +28,12 @@ class PaymentMethodWidget extends WidgetContainer {
     this.onCustomPaymentMethodSelected,
     this.onCustomPaymentMethodUnselected,
     this.onFinish,
+    required this.changePaymentMethod,
   }) : super(
          key: paymentWidget.getGlobalKey<PaymentMethodWidgetState>(selector),
          paymentWidget: paymentWidget,
          onFinish: onFinish,
+         changePaymentMethod: changePaymentMethod,
        );
 
   @override
